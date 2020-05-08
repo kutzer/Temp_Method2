@@ -59,44 +59,45 @@ for lineIDX = 1:size(XY_sort,2)
     colors = 'rb';
     for breakIDX = 1:2
         pBSeg(lineIDX,breakIDX) = plot(axs,brokenseg{lineIDX}{breakIDX}(1,:),brokenseg{lineIDX}{breakIDX}(2,:),...
-            ['--',colors(breakIDX)],'LineWidth',1.5,'Tag','vCellGraph');
+            ['--.',colors(breakIDX)],'LineWidth',1.5,'MarkerSize',20,'Tag','vCellGraph');
     end
 end
 
-%% reduce/eliminate broken lines
-pltINT = [];
+%% reduce/eliminate broken lines if they intersect their own obstacle
+
 for lineIDX = 1:size(XY_sort,2)   % for each vertical line
     lineObstacle = CB_idx_sort(lineIDX);    % get the obstacle index whose vertex defines line segment
-
-    removeBreak = false(1,2);   % initialize a "remove line break" function
+    
     for breakIDX = 1:2
         % Check to see if broken line segment intersects its defining obstacle
-        [tf,~] = VCell_segObsInt(brokenseg{lineIDX}{breakIDX},CB{lineObstacle});
-        if tf
+        [tf,pnts,vvIntALL] = VCell_segObsInt(brokenseg{lineIDX}{breakIDX},CB{lineObstacle});
+        % Remove vertex-vertex intersections
+        pnts(:,vvIntALL) = [];
+        if tf && size(pnts,2) > 0 % Intersections will always occur with the vertex that defines the vertical line
             brokenseg{lineIDX}{breakIDX} = [];
             set(pBSeg(lineIDX,breakIDX),'XData',[],'YData',[]);
             drawnow
         end
-        removeBreak(breakIDX) = true;
     end
-    %{
-    %         if all(bin)
-    %             continue;
-    %         end
-    %}
-    continue
+end
+
+%% cut segments
+pltINT = [];
+for lineIDX = 1:size(XY_sort,2)   % for each vertical line
+    lineObstacle = CB_idx_sort(lineIDX);    % get the obstacle index whose vertex defines line segment
     
-    for breakIDX = 1:2
-        %if bin(breakIDX)       % no idea what this is doing
-        %    continue
-        %end
-        
-        %tf = false;
-        for obstacleIDX = 1:numel(CB)
-            % Skip 
-            if obstacleIDX == lineObstacle
-                continue
-            end
+    %tf = false;
+    for obstacleIDX = 1:numel(CB)
+        % Skip
+        if obstacleIDX == lineObstacle
+            continue
+        end
+        for breakIDX = 1:2
+            %if bin(breakIDX)       % no idea what this is doing
+            %    continue
+            %end
+            
+            
             
             [tfNOW,pntALL] = VCell_segObsInt(brokenseg{lineIDX}{breakIDX},CB{obstacleIDX});
             if tfNOW
@@ -113,46 +114,54 @@ for lineIDX = 1:size(XY_sort,2)   % for each vertical line
                         brokenseg{lineIDX}{breakIDX}(:,2) = pntALL(:,ii);
                         pltINT(end+1) = plot(axs,pntALL(1,:),pntALL(2,:),'ms');
                         pltINT(end+1) = plot(axs,pntALL(1,ii),pntALL(2,ii),'mx');
-%                         dist = pntALL(2,:) - brokenseg{i}{k}(2,:);
-%                         ii = find(dist == min(dist),1,'first');
-%                         brokenseg{i}{k}(:,1) = pntALL(2,ii);
-                    case 2                        
+                        %                         dist = pntALL(2,:) - brokenseg{i}{k}(2,:);
+                        %                         ii = find(dist == min(dist),1,'first');
+                        %                         brokenseg{i}{k}(:,1) = pntALL(2,ii);
+                    case 2
                         dist = sqrt(sum( (pntALL - repmat(brokenseg{lineIDX}{breakIDX}(:,1),1,mm)).^2, 1));
                         ii = find(dist == min(dist),1,'first');
                         brokenseg{lineIDX}{breakIDX}(:,2) = pntALL(:,ii);
                         pltINT(end+1) = plot(axs,pntALL(1,:),pntALL(2,:),'cs');
                         pltINT(end+1) = plot(axs,pntALL(1,ii),pntALL(2,ii),'cx');
-%                         dist = pntALL(2,:) - brokenseg{i}{k}(2,:);
-%                         ii = find(dist == min(dist),1,'first');
-%                         brokenseg{i}{k}(:,1) = pntALL(2,ii);
+                        %                         dist = pntALL(2,:) - brokenseg{i}{k}(2,:);
+                        %                         ii = find(dist == min(dist),1,'first');
+                        %                         brokenseg{i}{k}(:,1) = pntALL(2,ii);
                 end
             end
         end
     end
-    
-    if ~bin(1)
-        plt(lineIDX,1) = plot(axs,brokenseg{lineIDX}{1}(1,:),brokenseg{lineIDX}{1}(2,:),'g','LineWidth',2);
-    end
-    if ~bin(2)
-        plt(lineIDX,2) = plot(axs,brokenseg{lineIDX}{2}(1,:),brokenseg{lineIDX}{2}(2,:),'r','LineWidth',2);
-    end
-    drawnow;
-    
-    seg{lineIDX} = cell2mat(brokenseg{lineIDX});
-    
 end
+    
+    return
+    %{
+if ~bin(1)
+    plt(lineIDX,1) = plot(axs,brokenseg{lineIDX}{1}(1,:),brokenseg{lineIDX}{1}(2,:),'g','LineWidth',2);
+end
+if ~bin(2)
+    plt(lineIDX,2) = plot(axs,brokenseg{lineIDX}{2}(1,:),brokenseg{lineIDX}{2}(2,:),'r','LineWidth',2);
+end
+drawnow;
+
+seg{lineIDX} = cell2mat(brokenseg{lineIDX});
+
+end
+
+
+
+return
+
 plt
 C = cell2mat(seg)
 count = 0;
 for h = 1:size(C,2)
-      x_mid(h) = ((C(1,h+count) + C(1,h+count+1))/2);
-      y_mid(h) = ((C(2,h+count) + C(2,h+count+1))/2);
-      if h+count+1 < size(C,2)
-      count = count + 1;
-      else
-          break
-      end
- end
+    x_mid(h) = ((C(1,h+count) + C(1,h+count+1))/2);
+    y_mid(h) = ((C(2,h+count) + C(2,h+count+1))/2);
+    if h+count+1 < size(C,2)
+        count = count + 1;
+    else
+        break
+    end
+end
 x_mid;
 y_mid;
 nodes_mid = [x_mid;y_mid];
@@ -160,13 +169,13 @@ nodes = [q_init,nodes_mid,q_goal];
 % for i = 1:size(nodes,2)
 %     if q_init(1) > nodes(1,i)
 %         nodes = [nodes(:,1:i) q_init nodes(:,i+1:end)];
-%     end   
+%     end
 % end
-% 
+%
 % for i = 1:size(nodes,2)
 %     if q_goal(1) > nodes(1,i)
 %         nodes = [nodes(:,1:i) q_goal nodes(:,i+1:end)];
-%     end   
+%     end
 % end
 %% Object Flags
 obsFlag = 0;
@@ -194,41 +203,41 @@ for lineIDX = 1:m
         if lineIDX <= j
             continue
         end
-    
+        
         if obsFlag(lineIDX) == obsFlag(j) && obsFlag(lineIDX) ~=0
             if abs(lineIDX-j) > 1 || abs(lineIDX-j) == (size(CB{obsFlag(lineIDX)},2)-1)
                 continue
             end
         else
-                segment01 = [nodes(:,lineIDX),nodes(:,j)];
-                isintersect = 0;
-                for breakIDX = 1:numel(CB)
-                    for w = 1:size(CB{breakIDX},2)
-                        if w < size(CB{breakIDX},2)
+            segment01 = [nodes(:,lineIDX),nodes(:,j)];
+            isintersect = 0;
+            for breakIDX = 1:numel(CB)
+                for w = 1:size(CB{breakIDX},2)
+                    if w < size(CB{breakIDX},2)
                         segment02 = [CB{breakIDX}(:,w),CB{breakIDX}(:,w+1)];
-                        else
+                    else
                         segment02 = [CB{breakIDX}(:,w),CB{breakIDX}(:,1)];
-                        end
-                    
-                        if logical(segmentIntersect(segment01,segment02)) == 1
-                            isintersect = 1;
-                           continue
-                        end
                     end
-                    if isintersect == 1
-                       continue
+                    
+                    if logical(segmentIntersect(segment01,segment02)) == 1
+                        isintersect = 1;
+                        continue
                     end
                 end
+                if isintersect == 1
+                    continue
+                end
+            end
         end
-         if isintersect == 1
+        if isintersect == 1
             continue
-         else
-             Adj(lineIDX,j) = 1;
-             Adj(j,lineIDX) = 1;
-             wAdj(lineIDX,j) = norm(nodes(:,lineIDX)-nodes(:,j));
-             wAdj(j,lineIDX) = wAdj(lineIDX,j);
-         end
-            %edg(i,j) = plot(axs,[nodes(1,i),nodes(1,j)],[nodes(2,i),nodes(2,j)],'b','LineWidth',1.5);
+        else
+            Adj(lineIDX,j) = 1;
+            Adj(j,lineIDX) = 1;
+            wAdj(lineIDX,j) = norm(nodes(:,lineIDX)-nodes(:,j));
+            wAdj(j,lineIDX) = wAdj(lineIDX,j);
+        end
+        %edg(i,j) = plot(axs,[nodes(1,i),nodes(1,j)],[nodes(2,i),nodes(2,j)],'b','LineWidth',1.5);
     end
 end
 

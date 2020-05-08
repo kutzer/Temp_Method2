@@ -1,8 +1,7 @@
-function varargout = VCell_segObsInt(pnts01,CB)
+function [tf,pntALL,vvIntALL] = VCell_segObsInt(pnts01,CB)
 
-[tf,pntALL] = segmentObstacleIntersect(pnts01,CB);
-varargout{1} = tf;
-varargout{2} = pntALL;
+[tf,pntALL,vvIntALL] = segmentObstacleIntersect(pnts01,CB);
+
 return
 
 tf = false;
