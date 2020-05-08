@@ -12,9 +12,9 @@ if nargin < 5
     hold(axs,'on','Tag','vCellGraph');
     daspect(axs,[1 1 1]);
     % Plot obstacles
-    for i = 1:numel(CB)
-        ptc(i) = plotCObstacle(CB{i},i);
-        set(ptc(i),'Tag','vCellGraph');
+    for lineIDX = 1:numel(CB)
+        ptc(lineIDX) = plotCObstacle(CB{lineIDX},lineIDX);
+        set(ptc(lineIDX),'Tag','vCellGraph');
     end
     pInit = plot(axs,q_init(1),q_init(2),'sg','MarkerSize',10,'LineWidth',2,'Tag','vCellGraph');
     pGoal = plot(axs,q_goal(1),q_goal(2),'xr','MarkerSize',10,'LineWidth',2,'Tag','vCellGraph');
@@ -30,9 +30,9 @@ YY = bounds(2,:);
 %% combine vertices & create CB index array
 XY = [];
 CB_idx = [];
-for i = 1:numel(CB)
-    XY = [XY, CB{i}];
-    CB_idx = [CB_idx, repmat(i,1,size(CB{i},2))];
+for obstacleIDX = 1:numel(CB)
+    XY = [XY, CB{obstacleIDX}];
+    CB_idx = [CB_idx, repmat(obstacleIDX,1,size(CB{obstacleIDX},2))];
 end
 
 % Sort lines by x-value
@@ -42,80 +42,76 @@ CB_idx_sort = CB_idx(:,idx);
 
 %% plot initial vertical lines
 set(axs,'XTick',XY_sort(1,:));
-for i = 1:size(XY_sort,2)
-    xTickLabel{i} = sprintf('Line %d',i);
-    segment{i} = [XY_sort(1,i), XY_sort(1,i); YY(2), YY(1)];    % Top-to-bottom
-    pSeg(i) = plot(axs,segment{i}(1,:),segment{i}(2,:),':k','Tag','vCellGraph');
+for lineIDX = 1:size(XY_sort,2)
+    xTickLabel{lineIDX} = sprintf('Line %d',lineIDX);
+    segment{lineIDX} = [XY_sort(1,lineIDX), XY_sort(1,lineIDX); YY(2), YY(1)];    % Top-to-bottom
+    pSeg(lineIDX) = plot(axs,segment{lineIDX}(1,:),segment{lineIDX}(2,:),':k','Tag','vCellGraph');
 end
 set(axs,'XTickLabel',xTickLabel,'XTickLabelRotation',90);
 
 %% break vertical lines
-for i = 1:size(XY_sort,2)
-    brokenseg{i}{1} = [XY_sort(1,i), XY_sort(1,i); YY(2), XY_sort(2,i)];
-    brokenseg{i}{2} = [XY_sort(1,i), XY_sort(1,i); XY_sort(2,i), YY(1)];
-    for j = 1:2
-    pBSeg(i,j) = plot(axs,brokenseg{i}{j}(1,:),brokenseg{i}{j}(2,:),':k','Tag','vCellGraph');
+for lineIDX = 1:size(XY_sort,2)
+    % create broken segments
+    brokenseg{lineIDX}{1} = [XY_sort(1,lineIDX), XY_sort(1,lineIDX); YY(2), XY_sort(2,lineIDX)];
+    brokenseg{lineIDX}{2} = [XY_sort(1,lineIDX), XY_sort(1,lineIDX); XY_sort(2,lineIDX), YY(1)];
+    
+    % plot broken segments
+    colors = 'rb';
+    for breakIDX = 1:2
+        pBSeg(lineIDX,breakIDX) = plot(axs,brokenseg{lineIDX}{breakIDX}(1,:),brokenseg{lineIDX}{breakIDX}(2,:),...
+            ['--',colors(breakIDX)],'LineWidth',1.5,'Tag','vCellGraph');
+    end
 end
 
+%% reduce/eliminate broken lines
 pltINT = [];
-for i = 1:size(XY_sort,2)
-    obsnum = CB_idx_sort(i);
-    n = size(CB{obsnum},2);
-    bin = false(1,2);
+for lineIDX = 1:size(XY_sort,2)   % for each vertical line
+    lineObstacle = CB_idx_sort(lineIDX);    % get the obstacle index whose vertex defines line segment
+
+    removeBreak = false(1,2);   % initialize a "remove line break" function
+    for breakIDX = 1:2
+        % Check to see if broken 
+    [tfNOW,pntALL] = VCell_segObsInt(brokenseg{lineIDX}{breakIDX},CB{obstacleIDX});
     %{
-    for j = 1:n
-        j0=j;
-        j1 = j+1;
-        if j1 > n
-            j1 = 1;
-        end
-        edge_j = [CB{obsnum}(:,j0),CB{obsnum}(:,j1)];
-        
-        for k = 1:2
-            [eeint,~,~,pnt] = segmentIntersect(brokenseg{i}{k}, edge_j);
-            if eeint
-                bin(k) = bin(k) || true;
-                continue
-            end
-        end
-    end
-    %}
     %         if all(bin)
     %             continue;
     %         end
+    %}
     
-    for k = 1:2
-        if bin(k)
-            continue
-        end
-        tf = false;
-        for obsIDX = 1:numel(CB)
-            if obsIDX == obsnum
+    for breakIDX = 1:2
+        %if bin(breakIDX)       % no idea what this is doing
+        %    continue
+        %end
+        
+        %tf = false;
+        for obstacleIDX = 1:numel(CB)
+            % Skip 
+            if obstacleIDX == lineObstacle
                 continue
             end
             
-            [tfNOW,pntALL] = VCell_segObsInt(brokenseg{i}{k},CB{obsIDX});
+            [tfNOW,pntALL] = VCell_segObsInt(brokenseg{lineIDX}{breakIDX},CB{obstacleIDX});
             if tfNOW
                 
-                brokenseg{i}{k}
+                brokenseg{lineIDX}{breakIDX}
                 pntALL(:,1) = [];
                 pntALL(:,2) = [];
                 pntALL
                 mm = size(pntALL,2);
-                switch k
+                switch breakIDX
                     case 1
-                        dist = sqrt(sum( (pntALL - repmat(brokenseg{i}{k}(:,1),1,mm)).^2, 1));
+                        dist = sqrt(sum( (pntALL - repmat(brokenseg{lineIDX}{breakIDX}(:,1),1,mm)).^2, 1));
                         ii = find(dist == min(dist),1,'first');
-                        brokenseg{i}{k}(:,2) = pntALL(:,ii);
+                        brokenseg{lineIDX}{breakIDX}(:,2) = pntALL(:,ii);
                         pltINT(end+1) = plot(axs,pntALL(1,:),pntALL(2,:),'ms');
                         pltINT(end+1) = plot(axs,pntALL(1,ii),pntALL(2,ii),'mx');
 %                         dist = pntALL(2,:) - brokenseg{i}{k}(2,:);
 %                         ii = find(dist == min(dist),1,'first');
 %                         brokenseg{i}{k}(:,1) = pntALL(2,ii);
                     case 2                        
-                        dist = sqrt(sum( (pntALL - repmat(brokenseg{i}{k}(:,1),1,mm)).^2, 1));
+                        dist = sqrt(sum( (pntALL - repmat(brokenseg{lineIDX}{breakIDX}(:,1),1,mm)).^2, 1));
                         ii = find(dist == min(dist),1,'first');
-                        brokenseg{i}{k}(:,2) = pntALL(:,ii);
+                        brokenseg{lineIDX}{breakIDX}(:,2) = pntALL(:,ii);
                         pltINT(end+1) = plot(axs,pntALL(1,:),pntALL(2,:),'cs');
                         pltINT(end+1) = plot(axs,pntALL(1,ii),pntALL(2,ii),'cx');
 %                         dist = pntALL(2,:) - brokenseg{i}{k}(2,:);
@@ -127,14 +123,14 @@ for i = 1:size(XY_sort,2)
     end
     
     if ~bin(1)
-        plt(i,1) = plot(axs,brokenseg{i}{1}(1,:),brokenseg{i}{1}(2,:),'g','LineWidth',2);
+        plt(lineIDX,1) = plot(axs,brokenseg{lineIDX}{1}(1,:),brokenseg{lineIDX}{1}(2,:),'g','LineWidth',2);
     end
     if ~bin(2)
-        plt(i,2) = plot(axs,brokenseg{i}{2}(1,:),brokenseg{i}{2}(2,:),'r','LineWidth',2);
+        plt(lineIDX,2) = plot(axs,brokenseg{lineIDX}{2}(1,:),brokenseg{lineIDX}{2}(2,:),'r','LineWidth',2);
     end
     drawnow;
     
-    seg{i} = cell2mat(brokenseg{i});
+    seg{lineIDX} = cell2mat(brokenseg{lineIDX});
     
 end
 plt
@@ -167,8 +163,8 @@ nodes = [q_init,nodes_mid,q_goal];
 %% Object Flags
 obsFlag = 0;
 nodes
-for i = 1:numel(CB)
-    obsFlag = [obsFlag, repmat(i,1,size(CB{i},2))];
+for lineIDX = 1:numel(CB)
+    obsFlag = [obsFlag, repmat(lineIDX,1,size(CB{lineIDX},2))];
 end
 
 obsFlag = [obsFlag, 0];
@@ -178,32 +174,32 @@ Adj = zeros(m,m);
 wAdj = inf(m,m);
 wAdj(logical(eye(m))) = 0;
 
-for i = 1:size(nodes,2)
-    plot_txt(i) = text(nodes(1,i),nodes(2,i),sprintf('%d',i));
+for lineIDX = 1:size(nodes,2)
+    plot_txt(lineIDX) = text(nodes(1,lineIDX),nodes(2,lineIDX),sprintf('%d',lineIDX));
 end
 
 %% populate connections in the adjacency
 
-for i = 1:m
+for lineIDX = 1:m
     
     for j = 1:m
-        if i <= j
+        if lineIDX <= j
             continue
         end
     
-        if obsFlag(i) == obsFlag(j) && obsFlag(i) ~=0
-            if abs(i-j) > 1 || abs(i-j) == (size(CB{obsFlag(i)},2)-1)
+        if obsFlag(lineIDX) == obsFlag(j) && obsFlag(lineIDX) ~=0
+            if abs(lineIDX-j) > 1 || abs(lineIDX-j) == (size(CB{obsFlag(lineIDX)},2)-1)
                 continue
             end
         else
-                segment01 = [nodes(:,i),nodes(:,j)];
+                segment01 = [nodes(:,lineIDX),nodes(:,j)];
                 isintersect = 0;
-                for k = 1:numel(CB)
-                    for w = 1:size(CB{k},2)
-                        if w < size(CB{k},2)
-                        segment02 = [CB{k}(:,w),CB{k}(:,w+1)];
+                for breakIDX = 1:numel(CB)
+                    for w = 1:size(CB{breakIDX},2)
+                        if w < size(CB{breakIDX},2)
+                        segment02 = [CB{breakIDX}(:,w),CB{breakIDX}(:,w+1)];
                         else
-                        segment02 = [CB{k}(:,w),CB{k}(:,1)];
+                        segment02 = [CB{breakIDX}(:,w),CB{breakIDX}(:,1)];
                         end
                     
                         if logical(segmentIntersect(segment01,segment02)) == 1
@@ -219,10 +215,10 @@ for i = 1:m
          if isintersect == 1
             continue
          else
-             Adj(i,j) = 1;
-             Adj(j,i) = 1;
-             wAdj(i,j) = norm(nodes(:,i)-nodes(:,j));
-             wAdj(j,i) = wAdj(i,j);
+             Adj(lineIDX,j) = 1;
+             Adj(j,lineIDX) = 1;
+             wAdj(lineIDX,j) = norm(nodes(:,lineIDX)-nodes(:,j));
+             wAdj(j,lineIDX) = wAdj(lineIDX,j);
          end
             %edg(i,j) = plot(axs,[nodes(1,i),nodes(1,j)],[nodes(2,i),nodes(2,j)],'b','LineWidth',1.5);
     end
