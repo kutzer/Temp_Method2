@@ -51,25 +51,18 @@ set(axs,'XTickLabel',xTickLabel,'XTickLabelRotation',90);
 
 %% break vertical lines
 for i = 1:size(XY_sort,2)
-    % create broken segments
     brokenseg{i}{1} = [XY_sort(1,i), XY_sort(1,i); YY(2), XY_sort(2,i)];
     brokenseg{i}{2} = [XY_sort(1,i), XY_sort(1,i); XY_sort(2,i), YY(1)];
-    
-    % plot broken segments
-    colors = 'rb';
-    for k = 1:2
-        pBSeg(i,k) = plot(axs,brokenseg{i}{k}(1,:),brokenseg{i}{k}(2,:),...
-            ['--',colors(k)],'LineWidth',1.5,'Tag','vCellGraph');
-    end
+    for j = 1:2
+    pBSeg(i,j) = plot(axs,brokenseg{i}{j}(1,:),brokenseg{i}{j}(2,:),':k','Tag','vCellGraph');
 end
 
-%% reduce/eliminate broken lines
 pltINT = [];
 for i = 1:size(XY_sort,2)
-    obstacleNumber = CB_idx_sort(i);    % current obstacle
+    obsnum = CB_idx_sort(i);
+    n = size(CB{obsnum},2);
     bin = false(1,2);
     %{
-    n = size(CB{obstacleNumber},2);
     for j = 1:n
         j0=j;
         j1 = j+1;
@@ -97,7 +90,7 @@ for i = 1:size(XY_sort,2)
         end
         tf = false;
         for obsIDX = 1:numel(CB)
-            if obsIDX == obstacleNumber
+            if obsIDX == obsnum
                 continue
             end
             
