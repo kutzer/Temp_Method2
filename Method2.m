@@ -14,7 +14,7 @@ hold(axs,'on');
 daspect(axs,[1 1 1]);
 
 % Define random obstacles & plot
-n = 2;
+n = 5;
 for i = 1:n
     v = 2*(10*rand)*(rand(2,15)-0.5) + 80*(rand(2,1)-0.5);
     cv = convhull(v(1,:),v(2,:));
